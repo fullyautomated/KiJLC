@@ -13,7 +13,7 @@ class JLCSMTPlugin(pcbnew.ActionPlugin):
         self.category = "Fabrication Outputs"
         self.description = "Generates the CPL placement files as expected by JLCSMT"
         self.show_toolbar_button = True
-        self.icon_file_name = os.path.join(os.path.dirname(__file__), 'KiJLC_128x128.png')
+        self.icon_file_name = os.path.join(os.path.dirname(__file__), 'KiJLC_32x32.png')
 
     def Run(self):
         board = pcbnew.GetBoard()
