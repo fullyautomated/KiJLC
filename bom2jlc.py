@@ -8,7 +8,7 @@ top_bom = dict()
 bot_bom = dict()
 layer_map = dict()
 
-ref_ignore = ["TP", "J", "NT", "SW"]
+ref_ignore = ["TP", "T", "NT", "REF***", "G", "H"]
 
 def parse_pcb(fn):
     pcb_fn = str(Path(fn).with_suffix("")) + ".kicad_pcb"

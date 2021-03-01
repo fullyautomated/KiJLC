@@ -6,7 +6,7 @@ import wx
 from decimal import Decimal
 from pathlib import Path
 
-ref_ignore = ["TP", "J", "NT", "SW"]
+ref_ignore = ["TP", "T", "NT", "REF**", "G", "H"]
 
 # original rotation db from:
 # https://github.com/matthewlai/JLCKicadTools/blob/master/jlc_kicad_tools/cpl_rotations_db.csv
@@ -15,7 +15,7 @@ rotations = {
     "^SOT-23": 180,
     "^SOT-353": 180,
     "^QFN-": 270,
-    "^LQFP-": 90,
+    "^LQFP-": 270,
     "^TQFP-": 270,
     "^SOP-(?!18_)": 270,
     "^TSSOP-": 270,
