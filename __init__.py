@@ -32,9 +32,10 @@ rotations = {
     "^R_Array_Convex_4x0603": 90,
     "^XCVR_ESP32-WROVER-B": 270,
     "^PinSocket_1x(04|05)_P2.54mm_Vertical": 270,
-    "Buzzer_MLT-8530_C94599": 270,
+    "Buzzer_MLT-8530_C94599": 0,
     "SW_Tactile_SPST_Angled_PTS645Vx58-2LFS": 180,
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": 180,
+    "USB_Micro-B_Molex-105017-0001": 270,
 }
 
 midpoint_correction = {
