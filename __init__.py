@@ -3,7 +3,7 @@ import os
 import pcbnew
 import re
 import wx
-from decimal import Decimal
+from decimal import Decimal, getcontext
 from pathlib import Path
 
 ref_ignore = ["TP", "T", "NT", "REF**", "G", "H"]
@@ -19,7 +19,7 @@ rotations = {
     "^TQFP-": 270,
     "^SOP-(?!18_)": 270,
     "^TSSOP-": 270,
-    "^DFN-": 270,
+    # "^DFN-": 270,
     "^SOIC-": 90,
     "^SOP-18_": 0,
     "^VSSOP-10_": 270,
@@ -30,7 +30,97 @@ rotations = {
     "^(.*?_|V)?QFN-(16|20|24|28|40)(-|_|$)": 270,
     "^MSOP-10_": 90,
     "^R_Array_Convex_4x0603": 90,
+    "^XCVR_ESP32-WROVER-B": 270,
+    "^PinSocket_1x(04|05)_P2.54mm_Vertical": 270,
+    "Buzzer_MLT-8530_C94599": 270,
+    "SW_Tactile_SPST_Angled_PTS645Vx58-2LFS": 180,
+    "USB_C_Receptacle_HRO_TYPE-C-31-M-12": 180,
 }
+
+midpoint_correction = {
+    "^PinSocket_1x04_P2.54mm_Vertical": (Decimal(0), Decimal(-3.81)),
+    "^PinSocket_1x05_P2.54mm_Vertical": (Decimal(0), Decimal(-5.08)),
+    "^XCVR_ESP32-WROVER-B": (Decimal(0), Decimal(0.04)),
+    "BarrelJack": (Decimal(-6.5), Decimal(0)),
+    "^SW_SPST_HRO": (Decimal(0), Decimal(1.65)),
+    "USB_C_Receptacle_HRO_TYPE-C-31-M-12": (Decimal(1.8), Decimal(0.65)),
+    "SW_Tactile_SPST_Angled_PTS645Vx58-2LFS": (Decimal(2.2), Decimal(-1)),
+}
+
+#
+# helper functions from https://docs.python.org/3/library/decimal.html
+#
+
+def pi():
+    """Compute Pi to the current precision.
+
+    >>> print(pi())
+    3.141592653589793238462643383
+
+    """
+    getcontext().prec += 2  # extra digits for intermediate steps
+    three = Decimal(3)      # substitute "three=3.0" for regular floats
+    lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
+    while s != lasts:
+        lasts = s
+        n, na = n+na, na+8
+        d, da = d+da, da+32
+        t = (t * n) / d
+        s += t
+    getcontext().prec -= 2
+    return +s               # unary plus applies the new precision
+
+def cos(x):
+    """Return the cosine of x as measured in radians.
+
+    The Taylor series approximation works best for a small value of x.
+    For larger values, first compute x = x % (2 * pi).
+
+    >>> print(cos(Decimal('0.5')))
+    0.8775825618903727161162815826
+    >>> print(cos(0.5))
+    0.87758256189
+    >>> print(cos(0.5+0j))
+    (0.87758256189+0j)
+
+    """
+    getcontext().prec += 2
+    i, lasts, s, fact, num, sign = 0, 0, 1, 1, 1, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i-1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    getcontext().prec -= 2
+    return +s
+
+def sin(x):
+    """Return the sine of x as measured in radians.
+
+    The Taylor series approximation works best for a small value of x.
+    For larger values, first compute x = x % (2 * pi).
+
+    >>> print(sin(Decimal('0.5')))
+    0.4794255386042030002732879352
+    >>> print(sin(0.5))
+    0.479425538604
+    >>> print(sin(0.5+0j))
+    (0.479425538604+0j)
+
+    """
+    getcontext().prec += 2
+    i, lasts, s, fact, num, sign = 1, 0, x, 1, x, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i-1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    getcontext().prec -= 2
+    return +s
 
 class JLCSMTPlugin(pcbnew.ActionPlugin):
     def defaults(self):
@@ -73,23 +163,41 @@ class JLCSMTPlugin(pcbnew.ActionPlugin):
             rot = mod.GetOrientationDegrees()
             desc = mod.GetDescription()
             layer = board.GetLayerName(mod.GetLayer())
-            mid_x = str(Decimal(pos[0]) / Decimal(1000000)) + "mm"
-            mid_y = str(Decimal(pos[1]) / Decimal(-1000000)) + "mm"
+            mid_x = Decimal(pos[0]) / Decimal(1000000)
+            mid_y = Decimal(pos[1]) / Decimal(-1000000)
             footprint = str(mod.GetFPID().GetLibItemName())
 
+            print(footprint)
 
+            # some library parts have a different origin than the JLC parts, try to correct it
+            for exp in midpoint_correction:
+                if re.match(exp, footprint):
+                    px, py = midpoint_correction[exp]
+                    rad = Decimal(rot) * pi() / Decimal(180)
+
+                    qx = cos(rad) * px - sin(rad) * py
+                    qy = sin(rad) * px + cos(rad) * py
+
+                    qx = qx.quantize(Decimal('0.001'))
+                    qy = qy.quantize(Decimal('0.001'))
+
+                    print(f"previous midpoint for {footprint} x: {mid_x}, y: {mid_y}; new x: {mid_x + qx}, y: {mid_y + qy}")
+                    mid_x += qx
+                    mid_y += qy
+            
             for exp in rotations:
                 if re.match(exp, footprint):
                     new_rot =  (rot + rotations[exp]) % 360
-                    print("rotating {} ({}): prev {}, new {}".format(ref, footprint, rot, new_rot))
+                    print(f"rotating {ref} ({footprint}): prev {rot}, new {new_rot}")
                     rot = new_rot
 
+            x = str(mid_x) + "mm"
+            y = str(mid_y) + "mm"
+
             if layer == "F.Cu":
-                layer = "top"
-                topw.writerow([ref, mid_x, mid_y, layer, rot])
+                topw.writerow([ref, x, y, "top", rot])
             elif layer == "B.Cu":
-                layer = "bottom"
-                botw.writerow([ref, mid_x, mid_y, layer, rot])
+                botw.writerow([ref, x, y, "bottom", rot])
 
         bot.close()
         top.close()
