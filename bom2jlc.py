@@ -13,7 +13,7 @@ ref_ignore = ["TP", "T", "NT", "REF***", "G", "H"]
 def parse_pcb(fn):
     pcb_fn = str(Path(fn).with_suffix("")) + ".kicad_pcb"
     board = pcbnew.LoadBoard(pcb_fn)
-    modules = board.GetModules()
+    modules = board.GetFootprints()
 
     for mod in modules:
         ref = mod.GetReference()
