@@ -135,6 +135,9 @@ class JLCSMTPlugin(pcbnew.ActionPlugin):
     def Run(self):
         board = pcbnew.GetBoard()
         modules = board.GetFootprints() # was GetModules() but this does not work with KiCAD 6.0
+        origin = board.GetDesignSettings().GetAuxOrigin()
+        origin_x = Decimal(origin.x) / Decimal(1000000)
+        origin_y = Decimal(origin.y) / Decimal(-1000000)
 
         fn = Path(board.GetFileName()).with_suffix("")
 
@@ -192,8 +195,8 @@ class JLCSMTPlugin(pcbnew.ActionPlugin):
                     print(f"rotating {ref} ({footprint}): prev {rot}, new {new_rot}")
                     rot = new_rot
 
-            x = str(mid_x) + "mm"
-            y = str(mid_y) + "mm"
+            x = str(mid_x - origin_x) + "mm"
+            y = str(mid_y - origin_y) + "mm"
 
             if layer == "F.Cu":
                 topw.writerow([ref, x, y, "top", rot])
