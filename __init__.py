@@ -134,7 +134,7 @@ class JLCSMTPlugin(pcbnew.ActionPlugin):
 
     def Run(self):
         board = pcbnew.GetBoard()
-        modules = board.GetModules()
+        modules = board.GetFootprints() # was GetModules() but this does not work with KiCAD 6.0
 
         fn = Path(board.GetFileName()).with_suffix("")
 
